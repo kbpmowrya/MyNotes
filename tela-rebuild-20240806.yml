@@ -1,0 +1,256 @@
+version: '3'
+
+services:
+  ui:
+    image: kbpmowrya/tela-web-rebuild:v0.0.4
+    container_name: tela-web-ui
+    ports:
+      - "4200:80"
+    restart: always  
+    networks:
+      - tela  
+  artemis:
+    image: apache/activemq-artemis:latest
+
+    container_name: tela-activemq-artemis
+    ports:
+      - "8161:8161"
+      - "61616:61616"
+    restart: always
+    environment:
+      - ARTEMIS_USER=artemis
+      - ARTEMIS_PASSWORD=artemis
+
+    networks:
+      - tela  
+  tela-api-gateway-rebuild:
+    image: planetsystems/tela-api-gateway-rebuild:latest
+    container_name: tela-api-gateway
+    environment:
+      - cors_allowed_origins=http://tela-web-ui:4200
+      - tela-clockin-uri=http://tela-api-clockin:9102
+      - tela-clockout-uri=http://tela-api-clockout:9095
+      - tela-report-uri=http://tela-api-reports:9096
+      - tela-api-new-uri=http://tela-api-new:9106
+      - tela-mq-uri=http://tela-mq-service:9099
+      - tela-stafftransfer-uri=http://tela-api-stafftransfer:9100
+      - tela-removeduplicate-uri=http://tela-api-removeduplicate:9101
+      - tela-consumer-uri=http://tela-api-mqconsumer:9104
+      - tela-mqsubscription-uri=http://tela-api-mqsubscription:1411
+      - port=9105
+    ports:
+      - "9401:9105"
+    restart: always
+    networks:
+      - tela
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '512M'
+
+  tela-api-new-rebuild:
+    image: planetsystems/tela-api-new-rebuild:latest
+    container_name: tela-api-new
+    ports:
+      - "9402:9106"
+    restart: always
+    networks:
+      - tela
+    environment:
+      - db-url=jdbc:postgresql://172.104.137.206:1449/TelaTest_v8
+      - db-username=tela_database_admin
+      - db-password=savu248gsb0927bsf0gjbv
+      - faceId-dir=RootStaffFaceIdDirectory
+      - staffDownload-dir=/home/TelaStaffDownload/
+      - htmlConvert-dir=/home/TelaHtmlConvert/
+      - faceFile-dir=RootStaffFaceFileDirectory
+      - mq-service-url=http://tela-mq-service:9099/tela-mq-service/queue
+      - mq-subscription-url=http://tela-api-mqsubscription:1411/tela-subscription
+      - port=9106
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '512M'
+
+  tela-clockin-service-rebuild:
+    image: planetsystems/tela-clockin-service-rebuild:latest
+    container_name: tela-api-clockin
+    ports:
+      - "9403:9102"
+    restart: always
+    networks:
+      - tela
+    environment:
+      - db-url=jdbc:postgresql://172.104.137.206:1449/TelaTest_v8
+      - db-username=tela_database_admin
+      - db-password=savu248gsb0927bsf0gjbv
+      - faceId-dir=RootStaffFaceIdDirectory
+      - staffDownload-dir=/home/TelaStaffDownload/
+      - htmlConvert-dir=/home/TelaHtmlConvert/
+      - faceFile-dir=RootStaffFaceFileDirectory
+      - mq-service-url=http://tela-mq-service:9099/tela-mq-service/queue
+      - port=9102
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: '1G'
+
+  tela-clockout-service-rebuild:
+    image: planetsystems/tela-clockout-service-rebuild:latest
+    container_name: tela-api-clockout
+    ports:
+      - "9404:9095"
+    restart: always
+    networks:
+      - tela
+    environment:
+      - db-url=jdbc:postgresql://172.104.137.206:1449/TelaTest_v8
+      - db-username=tela_database_admin
+      - db-password=savu248gsb0927bsf0gjbv
+      - faceId-dir=RootStaffFaceIdDirectory
+      - staffDownload-dir=/home/TelaStaffDownload/
+      - htmlConvert-dir=/home/TelaHtmlConvert/
+      - faceFile-dir=RootStaffFaceFileDirectory
+      - mq-service-url=http://tela-mq-service:9099/tela-mq-service/queue
+      - port=9095
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: '1G'
+
+  tela-mq-service-rebuild:
+    image: planetsystems/tela-mq-service-rebuild:latest
+    container_name: tela-mq-service
+    ports:
+      - "9405:9099"
+    restart: always
+    networks:
+      - tela
+    environment:
+      - artermis-url=tcp://tela-activemq-artemis:61616
+      - artemis-user=artemis
+      - artemis-password=artemis
+      - port=9099
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '512M'
+
+  tela-mqconsumer-service-rebuild:
+    image: planetsystems/tela-mqconsumer-service-rebuild:latest
+    container_name: tela-api-mqconsumer
+    environment:
+      - db-url=jdbc:postgresql://172.104.137.206:1449/TelaTest_v8
+      - db-username=tela_database_admin
+      - db-password=savu248gsb0927bsf0gjbv
+      - artemis-mode=native
+      - artemis-user=artemis
+      - artemis-password=artemis
+      - artemis-url=tcp://tela-activemq-artemis:61616
+      - mq-service-url=http://tela-mq-service:9099/tela-mq-service/queue
+      - mq-subscription-url=http://tela-api-mqsubscription:1411/tela-subscription
+      - port=9104
+    ports:
+      - "9406:9104"
+    restart: always
+    networks:
+      - tela
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '512M'
+
+  tela-mqsubscription-service-rebuild:
+    image: planetsystems/tela-mqsubscription-service-rebuild:latest
+    container_name: tela-api-mqsubscription
+    environment:
+      - db-url=jdbc:postgresql://172.104.137.206:1449/TelaTest_v8
+      - db-username=tela_database_admin
+      - db-password=savu248gsb0927bsf0gjbv
+      - mq-service-url=http://tela-mq-service:9099/tela-mq-service/queue
+      - port=1411
+    ports:
+      - "9507:1411"
+    restart: always
+    networks:
+      - tela
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '512M'
+
+  tela-removeduplicate-service-rebuild:
+    image: planetsystems/tela-removeduplicate-service-rebuild:latest
+    container_name: tela-api-removeduplicate
+    environment:
+      - db-url=jdbc:postgresql://172.104.137.206:1449/TelaTest_v8
+      - db-username=tela_database_admin
+      - db-password=savu248gsb0927bsf0gjbv
+      - faceId-dir=RootStaffFaceIdDirectory
+      - staffDownload-dir=/home/TelaStaffDownload/
+      - htmlConvert-dir=/home/TelaHtmlConvert/
+      - faceFile-dir=RootStaffFaceFileDirectory
+      - port=9101
+    ports:
+      - "9407:9101"
+    restart: always
+    networks:
+      - tela
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '512M'
+
+  tela-reports-service-rebuild:
+    image: planetsystems/tela-reports-service-rebuild:latest
+    container_name: tela-api-reports
+    environment:
+      - db-url=jdbc:postgresql://172.104.137.206:1449/TelaTest_v8
+      - db-username=tela_database_admin
+      - db-password=savu248gsb0927bsf0gjbv
+      - upload-dir=/home/FileUploads/
+      - faceId-dir=RootStaffFaceIdDirectory
+      - staffDownload-dir=/home/TelaStaffDownload/
+      - htmlConvert-dir=/home/TelaHtmlConvert/
+      - faceFile-dir=RootStaffFaceFileDirectory
+      - port=9096
+    ports:
+      - "9409:9096"
+    restart: always
+    networks:
+      - tela
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '512M'
+
+  tela-stafftransfer-service-rebuild:
+    image: planetsystems/tela-stafftransfer-service-rebuild:latest
+    container_name: tela-api-stafftransfer
+    environment:
+      - db-url=jdbc:postgresql://172.104.137.206:1449/TelaTest_v8
+      - db-username=tela_database_admin
+      - db-password=savu248gsb0927bsf0gjbv
+      - port=9100
+    ports:
+      - "9410:9100"
+    restart: always
+    networks:
+      - tela
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '512M'
+
+networks:
+  tela:
