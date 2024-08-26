@@ -27,7 +27,7 @@ services:
     image: planetsystems/tela-api-gateway-rebuild:latest
     container_name: tela-api-gateway
     environment:
-      - cors_allowed_origins=http://tela-web-ui:4200
+      - cors_allowed_origins=https://webapp-priv-d.telaschool.org
       - tela-clockin-uri=http://tela-api-clockin:9102
       - tela-clockout-uri=http://tela-api-clockout:9095
       - tela-report-uri=http://tela-api-reports:9096
